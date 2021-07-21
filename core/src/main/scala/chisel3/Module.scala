@@ -183,17 +183,32 @@ package internal {
   import chisel3.experimental.BaseModule
 
   object BaseModule {
+    trait IsClone[T] {
+      val _proto: T
+      def getProto: T = _proto
+      def isACloneOf(a: Any): Boolean = this == a || _proto == a
+    }
     // Private internal class to serve as a _parent for Data in cloned ports
-    private[chisel3] class ModuleClone(_proto: BaseModule) extends PseudoModule {
+    class ModuleClone[T <: BaseModule] private[chisel3] (val _proto: T) extends PseudoModule with IsClone[T] {
+      override def toString = s"ModuleClone(${_proto})"
+      def getPorts = _portsRecord
       // ClonePorts that hold the bound ports for this module
       // Used for setting the refs of both this module and the Record
       private[BaseModule] var _portsRecord: Record = _
+      // This is necessary for correctly supporting .toTarget on a Module Clone. If it is made from the
+      // Instance/Definition API, it should return an instanceTarget. If made from CMAR, it should return a
+      // ModuleTarget.
+      private[chisel3]    var _madeFromDefinition: Boolean = false
       // Don't generate a component, but point to the one for the cloned Module
       private[chisel3] def generateComponent(): Option[Component] = {
         require(!_closed, "Can't generate module more than once")
         _closed = true
         _component = _proto._component
         None
+      }
+      private[chisel3] lazy val ioMap: Map[Data, Data] = {
+        val name2Port = getPorts.elements
+        _proto.getChiselPorts.map { case (name, data) => data -> name2Port(name) }.toMap
       }
       // This module doesn't actually exist in the FIRRTL so no initialization to do
       private[chisel3] def initializeInParent(parentCompileOptions: CompileOptions): Unit = ()
@@ -215,6 +230,28 @@ package internal {
       }
     }
 
+    // proto must be an Either as we could be cloning a ModuleClone! But... why should that matter?
+    // We need to know the instanceName!
+    final class InstanceClone[T <: BaseModule] private[chisel3] (val _proto: T, val instName: () => String) extends BaseModule with IsClone[T] {
+      override def toString = s"InstanceClone(${_proto})"
+      // Don't generate a component, but point to the one for the cloned Module
+      private[chisel3] def generateComponent(): Option[Component] = None
+
+      private[chisel3] def setAsInstanceRef(): Unit = {
+        this.setRef(Ref(instName()))
+      }
+      override def instanceName = instName()
+      // This module doesn't acutally exist in the FIRRTL so no initialization to do
+      private[chisel3] def initializeInParent(parentCompileOptions: CompileOptions): Unit = ()
+
+      override def desiredName: String = _proto.name
+    }
+
+    // If we are cloning a non-module, we need another object which has the proper _parent set!
+    final class InstantiableClone[T <: IsInstantiable] private[chisel3] (val _proto: T) extends IsClone[T] {
+      private[chisel3] var _parent: Option[BaseModule] = internal.Builder.currentModule
+    }
+
     /** Record type returned by CloneModuleAsRecord
       *
       * @note These are not true Data (the Record doesn't correspond to anything in the emitted
@@ -232,6 +269,9 @@ package internal {
       // We make this before clonePorts because we want it to come up first in naming in
       // currentModule
       val cloneParent = Module(new ModuleClone(proto))
+      require(proto.isClosed, "Can't clone a module before module close")
+      require(cloneParent.getOptionRef.isEmpty, "Can't have ref set already!")
+      // Fake Module to serve as the _parent of the cloned ports
       // We don't create this inside the ModuleClone because we need the ref to be set by the
       // currentModule (and not clonePorts)
       val clonePorts = new ClonePorts(proto.getModulePorts: _*)
@@ -365,8 +405,9 @@ package experimental {
     final lazy val name = try {
       // PseudoModules are not "true modules" and thus should share
       // their original modules names without uniquification
+      // FIXME why is IsClone still necessary here?
       this match {
-        case _: PseudoModule => desiredName
+        case (_: PseudoModule | _: internal.BaseModule.IsClone[_]) => desiredName
         case _ => Builder.globalNamespace.name(desiredName)
       }
     } catch {
@@ -379,13 +420,20 @@ package experimental {
       *
       * @note Should not be called until circuit elaboration is complete
       */
-    final def toNamed: ModuleName = toTarget.toNamed
+    final def toNamed: ModuleName = ModuleTarget(this.circuitName, this.name).toNamed
 
     /** Returns a FIRRTL ModuleTarget that references this object
       *
       * @note Should not be called until circuit elaboration is complete
       */
-    final def toTarget: ModuleTarget = ModuleTarget(this.circuitName, this.name)
+    final def toTarget: IsModule = {
+      this match {
+        case m: internal.BaseModule.InstanceClone[_] => m._parent.get.toTarget.instOf(instanceName, name)
+        case m: internal.BaseModule.ModuleClone[_] if m._madeFromDefinition => m._parent.get.toTarget.instOf(instanceName, name)
+        case m: internal.BaseModule.ModuleClone[_] => ModuleTarget(this.circuitName, this.name)
+        case m => ModuleTarget(this.circuitName, this.name)
+      }
+    }
 
     /** Returns a FIRRTL ModuleTarget that references this object
       *
@@ -393,7 +441,7 @@ package experimental {
       */
     final def toAbsoluteTarget: IsModule = {
       _parent match {
-        case Some(parent) => parent.toAbsoluteTarget.instOf(this.instanceName, toTarget.module)
+        case Some(parent) => parent.toAbsoluteTarget.instOf(this.instanceName, name)
         case None =>
           // FIXME Special handling for Views - evidence of "weirdness" of .toAbsoluteTarget
           // In theory, .toAbsoluteTarget should not be necessary, .toTarget combined with the
