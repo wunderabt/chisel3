@@ -126,6 +126,11 @@ object Examples {
     @public val x = List.fill(3)(Wire(UInt(3.W)))
   }
   @instantiable
+  class HasSeq() extends MultiIOModule {
+    @public val y = Seq(1, 2, 3)
+    @public val x = Seq.fill(3)(Wire(UInt(3.W)))
+  }
+  @instantiable
   class HasOption() extends MultiIOModule {
     @public val x: Option[UInt] = Some(Wire(UInt(3.W)))
   }

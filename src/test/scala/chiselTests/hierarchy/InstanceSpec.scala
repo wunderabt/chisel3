@@ -181,35 +181,42 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       }
       check(new Top(), "~Top|Top/i:HasList>x_1".rt, "2")
     }
-    it("3.4: should work on options") {
+    it("3.4: should work on seqs") {
+      class Top() extends MultiIOModule {
+        val i = Instance(Definition(new HasSeq()))
+        mark(i.x(1), i.y(1).toString)
+      }
+      check(new Top(), "~Top|Top/i:HasSeq>x_1".rt, "2")
+    }
+    it("3.5: should work on options") {
       class Top() extends MultiIOModule {
         val i = Instance(Definition(new HasOption()))
         i.x.map(x => mark(x, "x"))
       }
       check(new Top(), "~Top|Top/i:HasOption>x".rt, "x")
     }
-    it("3.5: should work on vecs") {
+    it("3.6: should work on vecs") {
       class Top() extends MultiIOModule {
         val i = Instance(Definition(new HasVec()))
         mark(i.x, "blah")
       }
       check(new Top(), "~Top|Top/i:HasVec>x".rt, "blah")
     }
-    it("3.6: should work on statically indexed vectors external to module") {
+    it("3.7: should work on statically indexed vectors external to module") {
       class Top() extends MultiIOModule {
         val i = Instance(Definition(new HasVec()))
         mark(i.x(1), "blah")
       }
       check(new Top(), "~Top|Top/i:HasVec>x[1]".rt, "blah")
     }
-    it("3.7: should work on statically indexed vectors internal to module") {
+    it("3.8: should work on statically indexed vectors internal to module") {
       class Top() extends MultiIOModule {
         val i = Instance(Definition(new HasIndexedVec()))
         mark(i.y, "blah")
       }
       check(new Top(), "~Top|Top/i:HasIndexedVec>x[1]".rt, "blah")
     }
-    ignore("3.8: should work on vals in constructor arguments") {
+    ignore("3.9: should work on vals in constructor arguments") {
       class Top() extends MultiIOModule {
         val i = Instance(Definition(new HasPublicConstructorArgs(10)))
         //mark(i.x, i.int.toString)

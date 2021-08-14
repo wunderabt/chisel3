@@ -10,12 +10,10 @@ import chisel3._
 
 trait IsLookupable
 
-import scala.language.dynamics
+trait IsInstantiable
 
-trait IsInstantiable extends Dynamic {
-  def selectDynamic(name: String) = throw new Exception(s"Cannot call method $name on $this!")
-}
-@implicitNotFound("@instance is only legal when @public is only on subtypes of Data, BaseModule, IsInstantiable, IsLookupable, or Instance[_], or in a List or Option")
+@implicitNotFound("@public is only legal within a class marked @instantiable and only on vals of type" +
+  " Data, BaseModule, IsInstantiable, IsLookupable, or Instance[_], or in an Iterable or Option")
 sealed trait Lookupable[A, -B] {
   type C
   def lookup(that: A => B, ih: Instance[A]): C
@@ -115,12 +113,12 @@ object Lookupable {
       }
     }
   }
-  implicit def lookupList[A, B](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[A, B]) = new Lookupable[A, List[B]] {
-    type C = List[lookupable.C]
-    def lookup(that: A => List[B], ih: Instance[A]): C = {
+  implicit def lookupIterable[A, B, F[_] <: Iterable[_]](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[A, B]) = new Lookupable[A, F[B]] {
+    type C = F[lookupable.C]
+    def lookup(that: A => F[B], ih: Instance[A]): C = {
       import ih._
-      val ret = that(definition)
-      ret.map{ x: B => lookupable.lookup(_ => x, ih) }
+      val ret = that(definition).asInstanceOf[Iterable[B]]
+      ret.map{ x: B => lookupable.lookup(_ => x, ih) }.asInstanceOf[C]
     }
   }
   implicit def lookupOption[A, B](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[A, B]) = new Lookupable[A, Option[B]] {
