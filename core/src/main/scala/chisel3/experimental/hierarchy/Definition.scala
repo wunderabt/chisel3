@@ -1,19 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package chisel3
+package chisel3.experimental.hierarchy
 
-import scala.collection.immutable.ListMap
-import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.language.experimental.macros
 
-import java.util.IdentityHashMap
-
-import chisel3.internal._
-import chisel3.internal.Builder._
-import chisel3.internal.firrtl._
+import chisel3._
+import chisel3.internal.{Builder, DynamicContext}
 import chisel3.internal.sourceinfo.{InstTransform, SourceInfo}
 import chisel3.experimental.BaseModule
-import _root_.firrtl.annotations.{ModuleName, ModuleTarget, IsModule}
 
 object Definition extends SourceInfoDoc {
   /** A wrapper method that all Definition instantiations must be wrapped in

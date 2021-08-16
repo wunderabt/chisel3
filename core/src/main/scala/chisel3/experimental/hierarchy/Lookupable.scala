@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package chisel3
+package chisel3.experimental.hierarchy
 
 import chisel3.experimental.BaseModule
 import chisel3.internal.sourceinfo.SourceInfo
@@ -20,7 +20,7 @@ sealed trait Lookupable[A, -B] {
 }
 
 object Lookupable {
-  def cloneDataToContext[T <: Data](child: T, context: BaseModule)
+  private def cloneDataToContext[T <: Data](child: T, context: BaseModule)
                                (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): T = {
     internal.requireIsHardware(child, "cross module reference type")
     child._parent match {
@@ -38,7 +38,7 @@ object Lookupable {
         }
     }
   }
-  def cloneModuleToContext[T <: BaseModule](child: Either[T, IsClone[T]], context: BaseModule)
+  private def cloneModuleToContext[T <: BaseModule](child: Either[T, IsClone[T]], context: BaseModule)
                           (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): Either[T, IsClone[T]] = {
     def rec[A <: BaseModule](m: A): Either[A, IsClone[A]] = {
       (m, context) match {

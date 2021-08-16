@@ -129,7 +129,7 @@ private[chisel3] case class ViewBinding(target: Element) extends UnconstrainedBi
 private[chisel3] case class AggregateViewBinding(childMap: Map[Data, Element], target: Option[Data]) extends UnconstrainedBinding
 
 
-case object CrossModuleBinding extends TopBinding {
+private[chisel3] case object CrossModuleBinding extends TopBinding {
   def location = None
 }
 

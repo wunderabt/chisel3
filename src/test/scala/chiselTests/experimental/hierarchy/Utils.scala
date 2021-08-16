@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package chiselTests.hierarchy
+package chiselTests.experimental.hierarchy
 
 import chisel3._
 import chisel3.stage.{ChiselStage, DesignAnnotation, ChiselGeneratorAnnotation}

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package chiselTests.hierarchy
+package chiselTests.experimental.hierarchy
 
 import _root_.firrtl.annotations._
 import chisel3.experimental.{annotate, BaseModule}
-import chisel3.{Instance, Data}
+import chisel3.Data
+import chisel3.experimental.hierarchy.Instance
 
 object Annotations {
   case class MarkAnnotation(target: IsMember, tag: String) extends SingleTargetAnnotation[IsMember] {

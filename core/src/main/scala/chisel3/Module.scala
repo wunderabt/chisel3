@@ -181,6 +181,7 @@ package experimental {
 
 package internal {
   import chisel3.experimental.BaseModule
+  import chisel3.experimental.hierarchy.IsInstantiable
 
   object BaseModule {
     trait IsClone[T] {

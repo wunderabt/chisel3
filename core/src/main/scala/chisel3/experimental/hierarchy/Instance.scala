@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package chisel3
+package chisel3.experimental.hierarchy
 
-import scala.collection.immutable.ListMap
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.language.experimental.macros
 
-import java.util.IdentityHashMap
-
 import chisel3._
-import chisel3.internal._
-import chisel3.internal.Builder._
-import chisel3.internal.BaseModule.{ModuleClone, InstanceClone, IsClone, InstantiableClone}
-import chisel3.internal.sourceinfo.{InstTransform, SourceInfo, SourceInfoTransform}
+import chisel3.internal.BaseModule.{ModuleClone, IsClone, InstantiableClone}
+import chisel3.internal.sourceinfo.{InstTransform, SourceInfo}
 import chisel3.experimental.BaseModule
-import _root_.firrtl.annotations.IsModule
 
 case class Instance[A] private [chisel3] (val cloned: Either[A, IsClone[A]]) {
   def definition: A = cloned match {

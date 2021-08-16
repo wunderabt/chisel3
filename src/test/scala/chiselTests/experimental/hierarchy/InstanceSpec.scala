@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 package chiselTests
-package hierarchy
+package experimental.hierarchy
 
 import chisel3._
 import chisel3.testers.BasicTester
 import chisel3.experimental.annotate
 import chisel3.experimental.BaseModule
 import chisel3.internal.{instantiable, public}
+import chisel3.experimental.hierarchy.{Definition, Instance}
 import _root_.firrtl.annotations._
 import chisel3.stage.DesignAnnotation
 import chisel3.stage.ChiselGeneratorAnnotation
-import javax.print.attribute.HashPrintRequestAttributeSet
-
-
 
 // TODO/Notes
 // - In backport, clock/reset are not automatically assigned. I think this is fixed in 3.5
