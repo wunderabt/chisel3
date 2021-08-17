@@ -3,8 +3,8 @@
 package chiselTests.experimental.hierarchy
 
 import chisel3._
-import chisel3.internal.{instantiable, public}
-import chisel3.experimental.hierarchy.{Definition, Instance, IsInstantiable, IsLookupable}
+import chisel3.experimental.hierarchy._
+import chisel3.experimental.BaseModule
 
 object Examples {
   import Annotations._

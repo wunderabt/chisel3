@@ -7,7 +7,7 @@ import scala.annotation.StaticAnnotation
 import scala.reflect.macros.whitebox
 
 
-object instantiableMacro {
+private[chisel3] object instantiableMacro {
   def impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     import Flag._
@@ -56,7 +56,7 @@ object instantiableMacro {
   }
 }
 
-class instantiable extends StaticAnnotation {
+private[chisel3] class instantiable extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro instantiableMacro.impl
 }
-class public extends StaticAnnotation
+private[chisel3] class public extends StaticAnnotation
