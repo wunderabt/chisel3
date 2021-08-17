@@ -127,21 +127,21 @@ class InstanceSpec extends ChiselFunSpec with Utils {
   }
   describe("2: Annotations on designs not in the same chisel compilation") {
     it("2.0: should work on an innerWire, marked in a different compilation") {
-      val first = elaborate(new AddTwo)
+      val first = elaborateAndGetModule(new AddTwo)
       class Top(x: AddTwo) extends MultiIOModule {
         val parent = Instance(Definition(new ViewerParent(x, false, true)))
       }
       check(new Top(first), "~AddTwo|AddTwo/i0:AddOne>innerWire".rt, "first")
     }
     it("2.1: should work on an innerWire, marked in a different compilation, in instanced instantiable") {
-      val first = elaborate(new AddTwo)
+      val first = elaborateAndGetModule(new AddTwo)
       class Top(x: AddTwo) extends MultiIOModule {
         val parent = Instance(Definition(new ViewerParent(x, true, false)))
       }
       check(new Top(first), "~AddTwo|AddTwo/i0:AddOne>innerWire".rt, "second")
     }
     it("2.2: should work on an innerWire, marked in a different compilation, in instanced module") {
-      val first = elaborate(new AddTwo)
+      val first = elaborateAndGetModule(new AddTwo)
       class Top(x: AddTwo) extends MultiIOModule {
         val parent = Instance(Definition(new ViewerParent(x, false, false)))
         mark(parent.viewer.x.i0.innerWire, "third")
