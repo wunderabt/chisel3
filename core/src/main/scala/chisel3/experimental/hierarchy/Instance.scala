@@ -53,10 +53,10 @@ object Instance extends SourceInfoDoc {
     *
     * @return the input module `m` with Chisel metadata properly set
     */
-  def apply[T <: BaseModule, I <: Bundle](bc: Definition[T]): Instance[T] = macro InstTransform.apply[T]
+  def apply[T <: BaseModule](bc: Definition[T]): Instance[T] = macro InstTransform.apply[T]
 
   /** @group SourceInfoTransformMacro */
-  def do_apply[T <: BaseModule, I <: Bundle](bc: Definition[T])(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): Instance[T] = {
+  def do_apply[T <: BaseModule](bc: Definition[T])(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): Instance[T] = {
     val ports = experimental.CloneModuleAsRecord(bc.module)
     val clone = ports._parent.get.asInstanceOf[ModuleClone[T]]
     clone._madeFromDefinition = true
