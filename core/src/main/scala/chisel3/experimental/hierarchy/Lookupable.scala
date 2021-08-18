@@ -14,9 +14,9 @@ trait IsInstantiable
 
 @implicitNotFound("@public is only legal within a class marked @instantiable and only on vals of type" +
   " Data, BaseModule, IsInstantiable, IsLookupable, or Instance[_], or in an Iterable or Option")
-sealed trait Lookupable[A, -B] {
+sealed trait Lookupable[-B] {
   type C
-  def lookup(that: A => B, ih: Instance[A]): C
+  def lookup[A](that: A => B, ih: Instance[A]): C
 }
 
 object Lookupable {
@@ -75,9 +75,9 @@ object Lookupable {
         }
     }
   }
-  implicit def lookupInstance[A, B <: BaseModule](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, Instance[B]] {
+  implicit def lookupInstance[B <: BaseModule](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[Instance[B]] {
     type C = Instance[B]
-    def lookup(that: A => Instance[B], ih: Instance[A]): C = {
+    def lookup[A](that: A => Instance[B], ih: Instance[A]): C = {
       val ret = that(ih.definition)
       ih.cloned match {
         // If ih is just a normal module, no changing of context is necessary
@@ -86,9 +86,9 @@ object Lookupable {
       }
     }
   }
-  implicit def lookupModule[A, B <: BaseModule](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, B] {
+  implicit def lookupModule[B <: BaseModule](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[B] {
     type C = Instance[B]
-    def lookup(that: A => B, ih: Instance[A]): C = {
+    def lookup[A](that: A => B, ih: Instance[A]): C = {
       val ret = that(ih.definition)
       ih.cloned match {
         // If ih is just a normal module, no changing of context is necessary
@@ -97,9 +97,9 @@ object Lookupable {
       }
     }
   }
-  implicit def lookupData[A, B <: Data](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, B] {
+  implicit def lookupData[B <: Data](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[B] {
     type C = B
-    def lookup(that: A => B, ih: Instance[A]): C = {
+    def lookup[A](that: A => B, ih: Instance[A]): C = {
       val ret = that(ih.definition)
       val ioMap = ih.cloned match {
         case Right(x: ModuleClone[_]) => Some(x.ioMap)
@@ -113,53 +113,54 @@ object Lookupable {
       }
     }
   }
-  implicit def lookupIterable[A, B, F[_] <: Iterable[_]](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[A, B]) = new Lookupable[A, F[B]] {
+  implicit def lookupIterable[B, F[_] <: Iterable[_]](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[B]) = new Lookupable[F[B]] {
     type C = F[lookupable.C]
-    def lookup(that: A => F[B], ih: Instance[A]): C = {
+    def lookup[A](that: A => F[B], ih: Instance[A]): C = {
       import ih._
       val ret = that(definition).asInstanceOf[Iterable[B]]
-      ret.map{ x: B => lookupable.lookup(_ => x, ih) }.asInstanceOf[C]
+      ret.map{ x: B => lookupable.lookup[A](_ => x, ih) }.asInstanceOf[C]
     }
   }
-  implicit def lookupOption[A, B](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[A, B]) = new Lookupable[A, Option[B]] {
+  implicit def lookupOption[B](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[B]) = new Lookupable[Option[B]] {
     type C = Option[lookupable.C]
-    def lookup(that: A => Option[B], ih: Instance[A]): C = {
+    def lookup[A](that: A => Option[B], ih: Instance[A]): C = {
       import ih._
       val ret = that(definition)
-      ret.map{ x: B => lookupable.lookup(_ => x, ih) }
+      ret.map{ x: B => lookupable.lookup[A](_ => x, ih) }
     }
   }
-  implicit def lookupIsLookupable[A, B <: IsLookupable](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, B] {
+  implicit def lookupIsLookupable[B <: IsLookupable](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[B] {
     type C = B
-    def lookup(that: A => B, ih: Instance[A]): C = that(ih.definition)
+    def lookup[A](that: A => B, ih: Instance[A]): C = that(ih.definition)
   }
-  implicit def lookupIsInstantiable[A, B <: IsInstantiable](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, B] {
+  implicit def lookupIsInstantiable[B <: IsInstantiable](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[B] {
     type C = Instance[B]
-    def lookup(that: A => B, ih: Instance[A]): C = {
+    def lookup[A](that: A => B, ih: Instance[A]): C = {
       val ret = that(ih.definition)
       val cloned = new InstantiableClone(ret)
       cloned._parent = ih.getInnerDataContext
       new Instance(Right(cloned))
     }
   }
-  implicit def lookupString[A](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, String] {
+  // TODO should these be vals?
+  implicit def lookupString(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[String] {
     type B = String
     type C = String
-    def lookup(that: A => B, ih: Instance[A]): C = that(ih.definition)
+    def lookup[A](that: A => B, ih: Instance[A]): C = that(ih.definition)
   }
-  implicit def lookupInt[A](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, Int] {
+  implicit def lookupInt(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[Int] {
     type B = Int
     type C = Int
-    def lookup(that: A => B, ih: Instance[A]): C = that(ih.definition)
+    def lookup[A](that: A => B, ih: Instance[A]): C = that(ih.definition)
   }
-  implicit def lookupBoolean[A](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, Boolean] {
+  implicit def lookupBoolean(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[Boolean] {
     type B = Boolean
     type C = Boolean
-    def lookup(that: A => B, ih: Instance[A]): C = that(ih.definition)
+    def lookup[A](that: A => B, ih: Instance[A]): C = that(ih.definition)
   }
-  implicit def lookupBigInt[A](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[A, BigInt] {
+  implicit def lookupBigInt(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions) = new Lookupable[BigInt] {
     type B = BigInt
     type C = BigInt
-    def lookup(that: A => B, ih: Instance[A]): C = that(ih.definition)
+    def lookup[A](that: A => B, ih: Instance[A]): C = that(ih.definition)
   }
 }

@@ -10,7 +10,7 @@ import chisel3.internal.BaseModule.{ModuleClone, IsClone, InstantiableClone}
 import chisel3.internal.sourceinfo.{InstTransform, SourceInfo}
 import chisel3.experimental.BaseModule
 
-case class Instance[A] private [chisel3] (val cloned: Either[A, IsClone[A]]) {
+case class Instance[+A] private [chisel3] (val cloned: Either[A, IsClone[A]]) {
   def definition: A = cloned match {
     case Left(value: A) => value
     case Right(i: IsClone[A]) => i._proto
@@ -29,7 +29,7 @@ case class Instance[A] private [chisel3] (val cloned: Either[A, IsClone[A]]) {
 
   private [chisel3] val cache = HashMap[Data, Data]()
 
-  def apply[B, C](that: A => B)(implicit lookup: Lookupable[A, B]): lookup.C = {
+  def apply[B, C](that: A => B)(implicit lookup: Lookupable[B]): lookup.C = {
     lookup.lookup(that, this)
   }
   def toTarget = cloned match {

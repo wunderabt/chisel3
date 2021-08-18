@@ -4,6 +4,7 @@ package chiselTests
 package experimental.hierarchy
 
 import chisel3._
+import chisel3.experimental.BaseModule
 import chisel3.experimental.hierarchy.{Definition, Instance, instantiable, public}
 
 // TODO/Notes
@@ -312,6 +313,53 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       }
       check(new Top(), "~Top|Top/i:AddTwo/i1:AddOne".it, "blah")
     }
+  }
+  describe("6: @instantiable traits should work as expected") {
+    class MyBundle extends Bundle {
+      val in = Input(UInt(8.W))
+      val out = Output(UInt(8.W))
+    }
+    @instantiable
+    trait ModuleIntf { self: BaseModule =>
+      @public val io = IO(new MyBundle)
+    }
+    @instantiable
+    class ModuleWithCommonIntf extends Module with ModuleIntf {
+      @public val sum = io.in + 1.U
+
+      io.out := sum
+    }
+    class BlackBoxWithCommonIntf extends BlackBox with ModuleIntf
+
+    it("6.0: A Module that implements an @instantiable trait should be instantiable as that trait") {
+      class Top extends Module {
+        val i: Instance[ModuleIntf] = Instance(Definition(new ModuleWithCommonIntf))
+        mark(i.io.in, "gotcha")
+      }
+      check(new Top, "~Top|Top/i:ModuleWithCommonIntf>io.in".rt, "gotcha")
+    }
+    it("6.1 An @instantiable Module that implements an @instantiable trait should be able to use extension methods from both") {
+      class Top extends Module {
+        val i: Instance[ModuleWithCommonIntf] = Instance(Definition(new ModuleWithCommonIntf))
+        mark(i.io.in, "gotcha")
+        mark(i.sum, "also this")
+      }
+      val expected = List(
+        "~Top|Top/i:ModuleWithCommonIntf>io.in".rt -> "gotcha",
+        "~Top|Top/i:ModuleWithCommonIntf>sum".rt -> "also this"
+      )
+      check(new Top, expected)
+    }
+//    it("6.2 A BlackBox that implements an @instantiable trait should be instantiable as that trait") {
+//      class Top extends Module {
+//        val i: Instance[ModuleIntf] = Module(new BlackBoxWithCommonIntf)
+//        mark(i.io.in, "gotcha")
+//      }
+//      val expected = List(
+//        "~Top|Top/i:ModuleWithCommonIntf>io.in".rt -> "gotcha",
+//      )
+//      check(new Top, expected)
+//    }
   }
   describe("Select api's handle instanceClone properly"){}
 }

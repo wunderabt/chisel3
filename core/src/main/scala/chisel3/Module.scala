@@ -184,7 +184,7 @@ package internal {
   import chisel3.experimental.hierarchy.IsInstantiable
 
   object BaseModule {
-    trait IsClone[T] {
+    trait IsClone[+T] {
       val _proto: T
       def getProto: T = _proto
       def isACloneOf(a: Any): Boolean = this == a || _proto == a
