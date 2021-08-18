@@ -136,7 +136,7 @@ sealed class BitPat(val value: BigInt, val mask: BigInt, width: Int) extends Sou
 
   /** @group SourceInfoTransformMacro */
   def do_apply(x: Int)(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): BitPat = {
-    require(width > x && x >= 0, "index out of range")
+    require(width > x && x >= 0, s"index '$x' out of range [0, $width)")
     BitPat(s"b${rawString(x)}")
   }
 
@@ -168,7 +168,7 @@ sealed class BitPat(val value: BigInt, val mask: BigInt, width: Int) extends Sou
       case (false, true) => "0"
       case (_, false) => "?"
     }
-  }.mkString("")
+  }.mkString
 
   override def toString = s"BitPat($rawString)"
 }
