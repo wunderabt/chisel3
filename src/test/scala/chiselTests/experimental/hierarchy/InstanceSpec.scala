@@ -220,7 +220,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
     it("4.0: should work on modules") {
       class Top() extends MultiIOModule {
         val i = Module(new AddOne())
-        f(i)
+        f(Instance.wrap(i))
       }
       def f(i: Instance[AddOne]): Unit = mark(i.innerWire, "blah")
       check(new Top(), "~Top|AddOne>innerWire".rt, "blah")
@@ -229,14 +229,14 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       class Top() extends MultiIOModule {
         val i = Module(new AddTwo())
         val v = new Viewer(i, false)
-        mark(f(v), "blah")
+        mark(f(Instance.wrap(v)), "blah")
       }
       def f(i: Instance[Viewer]): Data = i.x.i0.innerWire
       check(new Top(), "~Top|AddTwo/i0:AddOne>innerWire".rt, "blah")
     }
     it("4.2: should work on seqs of modules") {
       class Top() extends MultiIOModule {
-        val is = Seq(Module(new AddTwo()), Module(new AddTwo()))
+        val is = Seq(Module(new AddTwo()), Module(new AddTwo())).map(Instance.wrap(_))
         mark(f(is), "blah")
       }
       def f(i: Seq[Instance[AddTwo]]): Data = i.head.i0.innerWire
@@ -245,7 +245,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
     it("4.3: should work on seqs of isInstantiables") {
       class Top() extends MultiIOModule {
         val i = Module(new AddTwo())
-        val vs = Seq(new Viewer(i, false), new Viewer(i, false))
+        val vs = Seq(new Viewer(i, false), new Viewer(i, false)).map(Instance.wrap)
         mark(f(vs), "blah")
       }
       def f(i: Seq[Instance[Viewer]]): Data = i.head.x.i0.innerWire
@@ -253,7 +253,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
     }
     it("4.2: should work on options of modules") {
       class Top() extends MultiIOModule {
-        val is: Option[AddTwo] = Some(Module(new AddTwo()))
+        val is: Option[Instance[AddTwo]] = Some(Module(new AddTwo())).map(Instance.wrap)
         mark(f(is), "blah")
       }
       def f(i: Option[Instance[AddTwo]]): Data = i.get.i0.innerWire
@@ -350,16 +350,16 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       )
       check(new Top, expected)
     }
-//    it("6.2 A BlackBox that implements an @instantiable trait should be instantiable as that trait") {
-//      class Top extends Module {
-//        val i: Instance[ModuleIntf] = Module(new BlackBoxWithCommonIntf)
-//        mark(i.io.in, "gotcha")
-//      }
-//      val expected = List(
-//        "~Top|Top/i:ModuleWithCommonIntf>io.in".rt -> "gotcha",
-//      )
-//      check(new Top, expected)
-//    }
+    it("6.2 A BlackBox that implements an @instantiable trait should be instantiable as that trait") {
+      class Top extends Module {
+        val i: Instance[ModuleIntf] = Instance.wrap(Module(new BlackBoxWithCommonIntf))
+        mark(i.io.in, "gotcha")
+      }
+      val expected = List(
+        "~Top|BlackBoxWithCommonIntf>in".rt -> "gotcha",
+      )
+      check(new Top, expected)
+    }
   }
   describe("Select api's handle instanceClone properly"){}
 }

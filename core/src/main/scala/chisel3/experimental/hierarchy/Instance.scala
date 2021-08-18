@@ -10,7 +10,7 @@ import chisel3.internal.BaseModule.{ModuleClone, IsClone, InstantiableClone}
 import chisel3.internal.sourceinfo.{InstTransform, SourceInfo}
 import chisel3.experimental.BaseModule
 
-case class Instance[+A] private [chisel3] (val cloned: Either[A, IsClone[A]]) {
+case class Instance[+A] private [chisel3] (cloned: Either[A, IsClone[A]]) {
   def definition: A = cloned match {
     case Left(value: A) => value
     case Right(i: IsClone[A]) => i._proto
@@ -45,12 +45,12 @@ case class Instance[+A] private [chisel3] (val cloned: Either[A, IsClone[A]]) {
     case other => throw new Exception(s"toAbsoluteTarget is not supported on $this")
   }
 }
+/** Factory methods for constructing [[Instance]]s */
 object Instance extends SourceInfoDoc {
   /** A wrapper method that all Module instantiations must be wrapped in
     * (necessary to help Chisel track internal state).
     *
     * @param bc the Module being created
-    *
     * @return the input module `m` with Chisel metadata properly set
     */
   def apply[T <: BaseModule](bc: Definition[T]): Instance[T] = macro InstTransform.apply[T]
@@ -64,23 +64,14 @@ object Instance extends SourceInfoDoc {
     new Instance(Right(clone))
   }
 
-  import scala.language.implicitConversions
-  sealed trait Convertable[-A, +B] {
-    def convert(that: A): B
-  }
-  
-  implicit def moduleToInstance[T <: BaseModule] = new Convertable[T, Instance[T]] {
-    def convert(that: T): Instance[T] = new Instance(Left(that))
-  }
-  implicit def isInstantiabletoInstance[T <: IsInstantiable] = new Convertable[T, Instance[T]] {
-    def convert(that: T): Instance[T] = new Instance(Left(that))
-  }
-  implicit def convertSeq[T, R](implicit convertable: Convertable[T, R]) = new Convertable[Seq[T], Seq[R]] {
-    def convert(that: Seq[T]): Seq[R] = that.map(convertable.convert)
-  }
-  implicit def convertOption[T, R](implicit convertable: Convertable[T, R]) = new Convertable[Option[T], Option[R]] {
-    def convert(that: Option[T]): Option[R] = that.map(convertable.convert)
-  }
 
-  implicit def convert[T, R](i: T)(implicit convertable: Convertable[T, R]): R = convertable.convert(i)
+  /** Wrap a [[BaseModule]] or any other [[IsInstantiable]] as an [[Instance]]
+    *
+    * The returned object refers to the exact instance passed to this method--it is **not** a new instance.
+    * To create a copy or new instance, use [[Instance$.apply]] on a [[Definition]]
+    *
+    * @param inst the object to wrap as an Instance
+    * @return An [[Instance]] wrapping the argument
+    */
+  def wrap[T <: IsInstantiable](inst: T): Instance[T] = new Instance(Left(inst))
 }
