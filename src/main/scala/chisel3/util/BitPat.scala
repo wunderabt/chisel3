@@ -136,14 +136,13 @@ sealed class BitPat(val value: BigInt, val mask: BigInt, width: Int) extends Sou
 
   /** @group SourceInfoTransformMacro */
   def do_apply(x: Int)(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): BitPat = {
-    require(width > x && x >= 0, s"index '$x' out of range [0, $width)")
-    BitPat(s"b${rawString(x)}")
+    do_apply(x, x)
   }
 
   /** @group SourceInfoTransformMacro */
   def do_apply(x: Int, y: Int)(implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): BitPat = {
-    require(width > y && y > x && x >= 0, "index out of range")
-    BitPat(s"b${rawString.slice(x, y + 1)}")
+    require(width > x && x >= y && y >= 0, s"Invalid bit range ($x, $y)")
+    BitPat(s"b${rawString.slice(width - x - 1, width - y)}")
   }
 
   /** @group SourceInfoTransformMacro */
