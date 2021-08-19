@@ -215,6 +215,30 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       }
       check(new Top(), "~Top|Top/i:HasPublicConstructorArgs>x".rt, "10")
     }
+    ignore("3.10: should work on Views") {
+      import chisel3.experimental.dataview._
+      @instantiable
+      class MyModule extends RawModule {
+        val in = IO(Input(UInt(8.W)))
+        @public val out = IO(Output(UInt(8.W)))
+        val sum = in + 1.U
+        out := sum + 1.U
+        @public val foo = in.viewAs[UInt]
+        @public val bar = sum.viewAs[UInt]
+      }
+      class Top extends RawModule {
+        val i = Instance(Definition(new MyModule))
+        mark(i.out, "out")
+        mark(i.foo, "foo")
+        mark(i.bar, "bar")
+      }
+      val expected = List(
+        "~Top|Top/i:MyModule>out".rt -> "out",
+        "~Top|Top/i:MyModule>in".rt -> "foo",
+        "~Top|Top/i:MyModule>sum".rt -> "bar"
+      )
+      check(new Top, expected)
+    }
   }
   describe("4: Wrapping") {
     it("4.0: should work on modules") {
