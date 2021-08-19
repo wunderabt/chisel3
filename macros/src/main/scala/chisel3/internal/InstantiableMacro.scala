@@ -35,13 +35,13 @@ private[chisel3] object instantiableMacro {
         case q"$mods class $tpname[..$tparams] $ctorMods(...$paramss) extends { ..$earlydefns } with ..$parents { $self => ..$stats }" =>
           val name2 = TypeName(tpname + c.freshName())
           val (newStats, extensions) = processBody(stats)
-          (q""" $mods class $tpname[..$tparams] $ctorMods(...$paramss) extends { ..$earlydefns } with ..$parents { $self => ..$newStats } """,
+          (q""" $mods class $tpname[..$tparams] $ctorMods(...$paramss) extends { ..$earlydefns } with ..$parents with chisel3.experimental.hierarchy.IsInstantiable { $self => ..$newStats } """,
            q"""implicit class $name2(module: chisel3.experimental.hierarchy.Instance[$tpname]) { ..$extensions } """,
            tpname)
         case q"$mods trait $tpname[..$tparams] extends { ..$earlydefns } with ..$parents { $self => ..$stats }" =>
           val name2 = TypeName(tpname + c.freshName())
           val (newStats, extensions) = processBody(stats)
-          (q"$mods trait $tpname[..$tparams] extends { ..$earlydefns } with ..$parents { $self => ..$newStats }",
+          (q"$mods trait $tpname[..$tparams] extends { ..$earlydefns } with ..$parents with chisel3.experimental.hierarchy.IsInstantiable { $self => ..$newStats }",
            q"""implicit class $name2(module: chisel3.experimental.hierarchy.Instance[$tpname]) { ..$extensions } """,
            tpname)
       }

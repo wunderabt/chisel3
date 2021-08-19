@@ -48,7 +48,7 @@ object Examples {
     out := i1.out
   }
   @instantiable
-  class WireContainer extends IsInstantiable {
+  class WireContainer {
     @public val innerWire = Wire(UInt(32.W))
   }
   @instantiable
@@ -60,7 +60,7 @@ object Examples {
     out := wireContainer.innerWire
   }
   @instantiable
-  class AddOneContainer extends IsInstantiable {
+  class AddOneContainer {
     @public val i0 = Module(new AddOne)
   }
   @instantiable
@@ -72,7 +72,7 @@ object Examples {
     out := moduleContainer.i0.out
   }
   @instantiable
-  class AddOneInstanceContainer extends IsInstantiable {
+  class AddOneInstanceContainer {
     val definition = Definition(new AddOne)
     @public val i0 = Instance(definition)
   }
@@ -85,7 +85,7 @@ object Examples {
     out := instanceContainer.i0.out
   }
   @instantiable
-  class AddOneContainerContainer extends IsInstantiable {
+  class AddOneContainerContainer {
     @public val container = new AddOneContainer
   }
   @instantiable
@@ -97,7 +97,7 @@ object Examples {
     out := containerContainer.container.i0.out
   }
   @instantiable
-  class Viewer(val y: AddTwo, markPlease: Boolean) extends IsInstantiable {
+  class Viewer(val y: AddTwo, markPlease: Boolean) {
     @public val x = y
     if(markPlease) mark(x.i0.innerWire, "first")
   }

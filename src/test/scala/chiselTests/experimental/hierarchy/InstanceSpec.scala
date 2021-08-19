@@ -216,7 +216,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       check(new Top(), "~Top|Top/i:HasPublicConstructorArgs>x".rt, "10")
     }
   }
-  describe("4: Conversions") {
+  describe("4: Wrapping") {
     it("4.0: should work on modules") {
       class Top() extends MultiIOModule {
         val i = Module(new AddOne())
@@ -236,7 +236,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
     }
     it("4.2: should work on seqs of modules") {
       class Top() extends MultiIOModule {
-        val is = Seq(Module(new AddTwo()), Module(new AddTwo())).map(Instance.wrap(_))
+        val is = Seq(Module(new AddTwo()), Module(new AddTwo())).map(Instance.wrap)
         mark(f(is), "blah")
       }
       def f(i: Seq[Instance[AddTwo]]): Data = i.head.i0.innerWire
