@@ -320,11 +320,12 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       val out = Output(UInt(8.W))
     }
     @instantiable
-    trait ModuleIntf { self: BaseModule =>
+    trait ModuleIntf extends BaseModule {
       @public val io = IO(new MyBundle)
     }
     @instantiable
-    class ModuleWithCommonIntf extends Module with ModuleIntf {
+    class ModuleWithCommonIntf(suffix: String = "") extends Module with ModuleIntf {
+      override def desiredName: String = super.desiredName + suffix
       @public val sum = io.in + 1.U
 
       io.out := sum
@@ -335,18 +336,25 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       class Top extends Module {
         val i: Instance[ModuleIntf] = Instance(Definition(new ModuleWithCommonIntf))
         mark(i.io.in, "gotcha")
+        mark(i, "inst")
       }
-      check(new Top, "~Top|Top/i:ModuleWithCommonIntf>io.in".rt, "gotcha")
+      val expected = List(
+        "~Top|Top/i:ModuleWithCommonIntf>io.in".rt -> "gotcha",
+        "~Top|Top/i:ModuleWithCommonIntf".it -> "inst"
+      )
+      check(new Top, expected)
     }
     it("6.1 An @instantiable Module that implements an @instantiable trait should be able to use extension methods from both") {
       class Top extends Module {
         val i: Instance[ModuleWithCommonIntf] = Instance(Definition(new ModuleWithCommonIntf))
         mark(i.io.in, "gotcha")
         mark(i.sum, "also this")
+        mark(i, "inst")
       }
       val expected = List(
         "~Top|Top/i:ModuleWithCommonIntf>io.in".rt -> "gotcha",
-        "~Top|Top/i:ModuleWithCommonIntf>sum".rt -> "also this"
+        "~Top|Top/i:ModuleWithCommonIntf>sum".rt -> "also this",
+        "~Top|Top/i:ModuleWithCommonIntf".it -> "inst"
       )
       check(new Top, expected)
     }
@@ -354,9 +362,30 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       class Top extends Module {
         val i: Instance[ModuleIntf] = Instance.wrap(Module(new BlackBoxWithCommonIntf))
         mark(i.io.in, "gotcha")
+        mark(i, "module")
       }
       val expected = List(
         "~Top|BlackBoxWithCommonIntf>in".rt -> "gotcha",
+        "~Top|BlackBoxWithCommonIntf".mt -> "module"
+      )
+      check(new Top, expected)
+    }
+    it("6.3 It should be possible to have Vectors of @instantiable traits mixing concrete subclasses") {
+      class Top extends Module {
+        val proto = Definition(new ModuleWithCommonIntf("X"))
+        val insts: Seq[Instance[ModuleIntf]] = Vector(
+          Instance.wrap(Module(new ModuleWithCommonIntf("Y"))),
+          Instance.wrap(Module(new BlackBoxWithCommonIntf)),
+          Instance(proto)
+        )
+        mark(insts(0).io.in, "foo")
+        mark(insts(1).io.in, "bar")
+        mark(insts(2).io.in, "fizz")
+      }
+      val expected = List(
+        "~Top|ModuleWithCommonIntfY>io.in".rt -> "foo",
+        "~Top|BlackBoxWithCommonIntf>in".rt -> "bar",
+        "~Top|Top/insts_2:ModuleWithCommonIntfX>io.in".rt -> "fizz"
       )
       check(new Top, expected)
     }
