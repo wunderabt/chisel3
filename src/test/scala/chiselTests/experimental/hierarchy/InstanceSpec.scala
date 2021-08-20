@@ -392,8 +392,8 @@ class InstanceSpec extends ChiselFunSpec with Utils {
   }
   // TODO don't forget to test this with heterogeneous Views (eg. viewing a tuple of a port and non-port as a single Bundle)
   describe("7: @instantiable and @public should compose with DataView") {
+    import chisel3.experimental.dataview._
     it("7.0: should work on simple Views") {
-      import chisel3.experimental.dataview._
       @instantiable
       class MyModule extends RawModule {
         val in = IO(Input(UInt(8.W)))
@@ -409,7 +409,6 @@ class InstanceSpec extends ChiselFunSpec with Utils {
         val i = Instance(Definition(new MyModule))
         i.foo := foo
         bar := i.out
-        // TODO also check connections
         mark(i.out, "out")
         mark(i.foo, "foo")
         mark(i.bar, "bar")
@@ -422,6 +421,35 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       val expectedLines = List(
         "i.in <= foo",
         "bar <= i.out"
+      )
+      check(new Top, expectedAnnos, expectedLines)
+    }
+    ignore("7.1: should work on Aggregate Views that are mapped 1:1") {
+      import chiselTests.experimental.SimpleBundleDataView._
+      @instantiable
+      class MyModule extends RawModule {
+        private val a = IO(Input(new BundleA(8)))
+        private val b = IO(Output(new BundleA(8)))
+        @public val in = a.viewAs[BundleB]
+        @public val out = b.viewAs[BundleB]
+        out := in
+      }
+      class Top extends RawModule {
+        val foo = IO(Input(new BundleB(8)))
+        val bar = IO(Output(new BundleB(8)))
+        val i = Instance(Definition(new MyModule))
+        i.in := foo
+        bar.bar := i.out.bar
+        mark(i.in, "in")
+        mark(i.in.bar, "in_bar")
+      }
+      val expectedAnnos = List(
+        "~Top|Top/i:MyModule>a".rt -> "in",
+        "~Top|Top/i:MyModule>a.foo".rt -> "in_bar",
+      )
+      val expectedLines = List(
+        "i.a <= foo",
+        "bar <= i.b.foo"
       )
       check(new Top, expectedAnnos, expectedLines)
     }
