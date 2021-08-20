@@ -4,9 +4,12 @@ package chisel3.experimental.hierarchy
 
 import chisel3.experimental.BaseModule
 import chisel3.internal.sourceinfo.SourceInfo
-import chisel3.internal.BaseModule.{ModuleClone, InstanceClone, IsClone, InstantiableClone}
+import chisel3.internal.BaseModule.{InstanceClone, InstantiableClone, IsClone, ModuleClone}
+
 import scala.annotation.implicitNotFound
 import chisel3._
+import chisel3.experimental.dataview.isView
+import chisel3.internal.{Builder, ViewBinding, ViewParent}
 
 trait IsLookupable
 
@@ -20,8 +23,9 @@ sealed trait Lookupable[-B] {
 }
 
 object Lookupable {
+
   private def cloneDataToContext[T <: Data](child: T, context: BaseModule)
-                               (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): T = {
+                                           (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): T = {
     internal.requireIsHardware(child, "cross module reference type")
     child._parent match {
       case None => child
@@ -37,6 +41,30 @@ object Lookupable {
             newChild
         }
     }
+  }
+  // The business logic of lookupData
+  // Also called by cloneViewToContext which potentially needs to lookup stuff from ioMap or the cache
+  private def doLookupData[A, B <: Data](data: B, ih: Instance[A], ioMap: Option[Map[Data, Data]], context: Option[BaseModule])
+                                        (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): B = {
+    data match {
+      case x: Data if ioMap.nonEmpty && ioMap.get.contains(x) => ioMap.get(x).asInstanceOf[B]
+      case x: Data if ih.cache.contains(x) => ih.cache(x).asInstanceOf[B]
+      case _ =>
+        assert(context.nonEmpty) // TODO is this even possible? Better error message here
+        cloneDataToContext(data, context.get)
+    }
+  }
+  private def cloneViewToContext[A, B <: Data](data: B, ih: Instance[A], ioMap: Option[Map[Data, Data]], context: Option[BaseModule])
+                                           (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): B = {
+    val newBinding = data.topBinding match {
+      case ViewBinding(target) => ViewBinding(doLookupData(target, ih, ioMap, context))
+    }
+    val result = data.cloneTypeFull
+    result.bind(newBinding)
+    // TODO unify these two lines with `.viewAs`
+    result.setAllParents(Some(ViewParent))
+    result.forceName(None, "view", Builder.viewNamespace)
+    result
   }
   private def cloneModuleToContext[T <: BaseModule](child: Either[T, IsClone[T]], context: BaseModule)
                           (implicit sourceInfo: SourceInfo, compileOptions: CompileOptions): Either[T, IsClone[T]] = {
@@ -101,16 +129,17 @@ object Lookupable {
     type C = B
     def lookup[A](that: A => B, ih: Instance[A]): C = {
       val ret = that(ih.definition)
-      val ioMap = ih.cloned match {
+      val ioMap: Option[Map[Data, Data]] = ih.cloned match {
         case Right(x: ModuleClone[_]) => Some(x.ioMap)
         case Left(x: BaseModule) => Some(x.getChiselPorts.map { case (_, data) => data -> data }.toMap)
-        case other => None
+        case _ => None
       }
-      ret match {
-        case x: Data if ioMap.nonEmpty && ioMap.get.contains(x) => ioMap.get(x).asInstanceOf[B]
-        case x: Data if ih.cache.contains(x) => ih.cache(x).asInstanceOf[B]
-        case x: Data if ih.getInnerDataContext.nonEmpty => cloneDataToContext(ret, ih.getInnerDataContext.get)
+      if (isView(ret)) {
+        cloneViewToContext(ret, ih, ioMap, ih.getInnerDataContext)
+      } else {
+        doLookupData(ret, ih, ioMap, ih.getInnerDataContext)
       }
+
     }
   }
   implicit def lookupIterable[B, F[_] <: Iterable[_]](implicit sourceInfo: SourceInfo, compileOptions: CompileOptions, lookupable: Lookupable[B]) = new Lookupable[F[B]] {

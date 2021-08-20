@@ -215,30 +215,6 @@ class InstanceSpec extends ChiselFunSpec with Utils {
       }
       check(new Top(), "~Top|Top/i:HasPublicConstructorArgs>x".rt, "10")
     }
-    ignore("3.10: should work on Views") {
-      import chisel3.experimental.dataview._
-      @instantiable
-      class MyModule extends RawModule {
-        val in = IO(Input(UInt(8.W)))
-        @public val out = IO(Output(UInt(8.W)))
-        val sum = in + 1.U
-        out := sum + 1.U
-        @public val foo = in.viewAs[UInt]
-        @public val bar = sum.viewAs[UInt]
-      }
-      class Top extends RawModule {
-        val i = Instance(Definition(new MyModule))
-        mark(i.out, "out")
-        mark(i.foo, "foo")
-        mark(i.bar, "bar")
-      }
-      val expected = List(
-        "~Top|Top/i:MyModule>out".rt -> "out",
-        "~Top|Top/i:MyModule>in".rt -> "foo",
-        "~Top|Top/i:MyModule>sum".rt -> "bar"
-      )
-      check(new Top, expected)
-    }
   }
   describe("4: Wrapping") {
     it("4.0: should work on modules") {
@@ -366,7 +342,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
         "~Top|Top/i:ModuleWithCommonIntf>io.in".rt -> "gotcha",
         "~Top|Top/i:ModuleWithCommonIntf".it -> "inst"
       )
-      check(new Top, expected)
+      check(new Top, expected, Nil)
     }
     it("6.1 An @instantiable Module that implements an @instantiable trait should be able to use extension methods from both") {
       class Top extends Module {
@@ -380,7 +356,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
         "~Top|Top/i:ModuleWithCommonIntf>sum".rt -> "also this",
         "~Top|Top/i:ModuleWithCommonIntf".it -> "inst"
       )
-      check(new Top, expected)
+      check(new Top, expected, Nil)
     }
     it("6.2 A BlackBox that implements an @instantiable trait should be instantiable as that trait") {
       class Top extends Module {
@@ -392,7 +368,7 @@ class InstanceSpec extends ChiselFunSpec with Utils {
         "~Top|BlackBoxWithCommonIntf>in".rt -> "gotcha",
         "~Top|BlackBoxWithCommonIntf".mt -> "module"
       )
-      check(new Top, expected)
+      check(new Top, expected, Nil)
     }
     it("6.3 It should be possible to have Vectors of @instantiable traits mixing concrete subclasses") {
       class Top extends Module {
@@ -411,7 +387,43 @@ class InstanceSpec extends ChiselFunSpec with Utils {
         "~Top|BlackBoxWithCommonIntf>in".rt -> "bar",
         "~Top|Top/insts_2:ModuleWithCommonIntfX>io.in".rt -> "fizz"
       )
-      check(new Top, expected)
+      check(new Top, expected, Nil)
+    }
+  }
+  // TODO don't forget to test this with heterogeneous Views (eg. viewing a tuple of a port and non-port as a single Bundle)
+  describe("7: @instantiable and @public should compose with DataView") {
+    it("7.0: should work on simple Views") {
+      import chisel3.experimental.dataview._
+      @instantiable
+      class MyModule extends RawModule {
+        val in = IO(Input(UInt(8.W)))
+        @public val out = IO(Output(UInt(8.W)))
+        val sum = in + 1.U
+        out := sum + 1.U
+        @public val foo = in.viewAs[UInt]
+        @public val bar = sum.viewAs[UInt]
+      }
+      class Top extends RawModule {
+        val foo = IO(Input(UInt(8.W)))
+        val bar = IO(Output(UInt(8.W)))
+        val i = Instance(Definition(new MyModule))
+        i.foo := foo
+        bar := i.out
+        // TODO also check connections
+        mark(i.out, "out")
+        mark(i.foo, "foo")
+        mark(i.bar, "bar")
+      }
+      val expectedAnnos = List(
+        "~Top|Top/i:MyModule>out".rt -> "out",
+        "~Top|Top/i:MyModule>in".rt -> "foo",
+        "~Top|Top/i:MyModule>sum".rt -> "bar"
+      )
+      val expectedLines = List(
+        "i.in <= foo",
+        "bar <= i.out"
+      )
+      check(new Top, expectedAnnos, expectedLines)
     }
   }
   describe("Select api's handle instanceClone properly"){}
